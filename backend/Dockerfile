@@ -21,7 +21,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy rest of the backend code
-COPY . .
+COPY . . 
 
 # Expose port (Render maps this automatically)
 EXPOSE 10000
