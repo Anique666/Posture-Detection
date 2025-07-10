@@ -49,8 +49,8 @@ Posture-Detection/
 ### Prerequisites
 - Git
 - Node.js & npm (for frontend)
-- Python 3.8+ (for backend)
-- Docker (optional, for containerized backend)
+- Python 3.12 (for backend)
+- Docker (optional)
 
 ### Clone the Repository
 
@@ -67,14 +67,6 @@ python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 python -m app.main
-```
-
-Or with Docker:
-
-```sh
-cd backend
-docker build -t posture-backend .
-docker run -p 5000:5000 posture-backend
 ```
 
 ### Frontend Setup
