@@ -5,7 +5,6 @@ from starlette.responses import FileResponse
 import shutil
 import os
 import uuid
-
 from app.model import run_pose_model
 
 app = FastAPI()
@@ -28,14 +27,13 @@ async def analyze_posture(file: UploadFile = File(...)):
     input_filename = f"temp_{uuid.uuid4()}.mp4"
     output_filename = f"processed_{uuid.uuid4()}.mp4"
     output_path = os.path.join("static", output_filename)
-
+    
     with open(input_filename, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-
+    
     final_classification, feedback = run_pose_model(input_filename, output_path)
-
     os.remove(input_filename)
-
+    
     return {
         "video_url": f"http://localhost:8000/static/{output_filename}",
         "feedback": {
