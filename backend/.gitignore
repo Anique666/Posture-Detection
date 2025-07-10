@@ -7,3 +7,4 @@ __pycache__/
 *.swp
 *.bak
 app/temp_videos/
+static/

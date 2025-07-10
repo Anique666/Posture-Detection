@@ -1,25 +1,23 @@
+import cv2
 import mediapipe as mp
-import cv2 as cv
-import math as m
+import math
+import os
 
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
-pose = mp_pose.Pose(static_image_mode=False,
-                    min_detection_confidence=0.5,
-                    min_tracking_confidence=0.5)
+
+pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
 def calculate_angle(p1, p2, p3):
     v1 = (p1.x - p2.x, p1.y - p2.y)
     v2 = (p3.x - p2.x, p3.y - p2.y)
-    dot_product = v1[0] * v2[0] + v1[1] * v2[1]
-    magnitude_v1 = m.sqrt(v1[0] ** 2 + v1[1] ** 2)
-    magnitude_v2 = m.sqrt(v2[0] ** 2 + v2[1] ** 2)
-    if magnitude_v1 == 0 or magnitude_v2 == 0:
+    dot = v1[0]*v2[0] + v1[1]*v2[1]
+    mag1 = math.sqrt(v1[0]**2 + v1[1]**2)
+    mag2 = math.sqrt(v2[0]**2 + v2[1]**2)
+    if mag1 == 0 or mag2 == 0:
         return 0
-    cos_theta = dot_product / (magnitude_v1 * magnitude_v2)
-    cos_theta = max(-1.0, min(1.0, cos_theta))
-    angle = m.acos(cos_theta)
-    return m.degrees(angle)
+    angle = math.acos(dot / (mag1 * mag2))
+    return math.degrees(angle)
 
 def classify_posture(landmarks):
     rs = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
@@ -39,144 +37,54 @@ def classify_posture(landmarks):
     l_k_a = calculate_angle(lh, lk, la)
     a_k_a = (r_k_a + l_k_a) / 2
 
-    if a_k_a > 170 and avg_s_y < avg_h_y < avg_k_y:
-        return "Standing"
-    elif avg_s_y < avg_h_y < avg_k_y and a_k_a < 150:
-        return "Squatting"
-    elif avg_s_y < avg_h_y < avg_k_y and a_k_a >= 150:
-        return "Sitting"
-    else:
+    # New Rule: Filter out standing postures
+    vertical_alignment = abs(avg_s_y - avg_h_y) < 0.05 and abs(avg_h_y - avg_k_y) < 0.05
+    if vertical_alignment:
         return "Other"
 
-def calculate_torso_angle(landmarks):
-    try:
-        ls = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
-        rs = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
-        lh = landmarks[mp_pose.PoseLandmark.LEFT_HIP.value]
-        rh = landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value]
-    except IndexError:
-        return None
-    avg_shoulder_x = (ls.x + rs.x) / 2
-    avg_shoulder_y = (ls.y + rs.y) / 2
-    avg_hip_x = (lh.x + rh.x) / 2
-    avg_hip_y = (lh.y + rh.y) / 2
-    torso_vector = (avg_shoulder_x - avg_hip_x, avg_shoulder_y - avg_hip_y)
-    vertical_vector = (0, -1)
-    magnitude_torso = (torso_vector[0] ** 2 + torso_vector[1] ** 2) ** 0.5
-    if magnitude_torso == 0:
-        return None
-    dot_product = torso_vector[0] * vertical_vector[0] + torso_vector[1] * vertical_vector[1]
-    cos_theta = dot_product / magnitude_torso
-    cos_theta = max(-1.0, min(1.0, cos_theta))
-    angle = m.degrees(m.acos(cos_theta))
-    return 180 - angle
+    if avg_s_y < avg_h_y < avg_k_y:
+        if a_k_a < 150:
+            return "Squatting"
+        elif a_k_a >= 150:
+            return "Sitting"
 
-def check_squatting_posture(landmarks):
-    try:
-        rk = landmarks[mp_pose.PoseLandmark.RIGHT_KNEE.value]
-        ra = landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE.value]
-        lk = landmarks[mp_pose.PoseLandmark.LEFT_KNEE.value]
-        la = landmarks[mp_pose.PoseLandmark.LEFT_ANKLE.value]
-    except IndexError:
-        return "Insufficient landmarks for squat check"
+    return "Other"
 
-    back_angle = calculate_torso_angle(landmarks)
-    right_knee_beyond_toe = rk.x > ra.x if rk and ra else False
-    left_knee_beyond_toe = lk.x > la.x if lk and la else False
 
-    reasons = []
-    if right_knee_beyond_toe or left_knee_beyond_toe:
-        reasons.append("Knee(s) beyond toe")
-    if back_angle is not None and back_angle < 140:
-        reasons.append(f"Back angle too small: {back_angle:.1f}°")
-    if reasons:
-        return "Incorrect Squatting Posture: " + ", ".join(reasons)
-    return "Correct Squatting Posture"
+def run_pose_model(input_path, output_path):
+    cap = cv2.VideoCapture(input_path)
+    width = int(cap.get(3))
+    height = int(cap.get(4))
+    fps = cap.get(cv2.CAP_PROP_FPS)
 
-def check_sitting_posture(landmarks):
-    try:
-        rs = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
-        rh = landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value]
-        re = landmarks[mp_pose.PoseLandmark.RIGHT_EAR.value]
-        ls = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
-        lh = landmarks[mp_pose.PoseLandmark.LEFT_HIP.value]
-        le = landmarks[mp_pose.PoseLandmark.LEFT_EAR.value]
-    except IndexError:
-        return "Insufficient landmarks for sitting check"
+    # Re-encode for browser compatibility
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264 encoding
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-    right_neck_angle = calculate_angle(rs, rh, re) if rs and rh and re else None
-    left_neck_angle = calculate_angle(ls, lh, le) if ls and lh and le else None
-    if right_neck_angle is not None and left_neck_angle is not None:
-        neck_angle = (right_neck_angle + left_neck_angle) / 2
-    elif right_neck_angle is not None:
-        neck_angle = right_neck_angle
-    elif left_neck_angle is not None:
-        neck_angle = left_neck_angle
-    else:
-        neck_angle = None
-
-    back_angle = calculate_torso_angle(landmarks)
-
-    reasons = []
-    if neck_angle is not None and neck_angle > 30:
-        reasons.append(f"Neck bent: {neck_angle:.1f}°")
-    if back_angle is not None and abs(back_angle - 180) > 30:
-        reasons.append(f"Back not straight: {back_angle:.1f}°")
-    if reasons:
-        return "Incorrect Sitting Posture: " + ", ".join(reasons)
-    return "Correct Sitting Posture"
-
-def run_pose_model(file_path: str) -> dict:
-    cap = cv.VideoCapture(file_path)
-    total_sit = total_squat = 0
-    bad_sit = bad_squat = 0
+    counts = {"Sitting": 0, "Squatting": 0, "Other": 0}
 
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
-        rgb_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-        result = pose.process(rgb_frame)
 
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        result = pose.process(rgb)
+
+        feedback = "No Pose Detected"
         if result.pose_landmarks:
-            landmarks = result.pose_landmarks.landmark
-            pose_type = classify_posture(landmarks)
+            mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            posture = classify_posture(result.pose_landmarks.landmark)
+            counts[posture] += 1
+            feedback = f"{posture} Posture"
 
-            if pose_type == "Squatting":
-                total_squat += 1
-                feedback = check_squatting_posture(landmarks)
-                if "Incorrect" in feedback:
-                    bad_squat += 1
+        cv2.putText(frame, feedback, (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-            elif pose_type == "Sitting":
-                total_sit += 1
-                feedback = check_sitting_posture(landmarks)
-                if "Incorrect" in feedback:
-                    bad_sit += 1
+        out.write(frame)
 
     cap.release()
+    out.release()
 
-
-    summary = {}
-    if total_sit == 0 and total_squat == 0:
-        summary["feedback"] = "No sitting or squatting posture detected"
-    elif total_sit >= total_squat:
-        
-        if total_sit > 0:
-            summary["posture"] = "Sitting"
-            summary["feedback"] = (
-                "Incorrect Sitting Posture"
-                if bad_sit / total_sit > 0.5
-                else "Correct Sitting Posture"
-            )
-    else:
-        
-        if total_squat > 0:
-            summary["posture"] = "Squatting"
-            summary["feedback"] = (
-                "Incorrect Squatting Posture"
-                if bad_squat / total_squat > 0.5
-                else "Correct Squatting Posture"
-            )
-
-    return summary
+    dominant = max(counts, key=counts.get)
+    return dominant, f"Most frames were classified as {dominant.lower()}."

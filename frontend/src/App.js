@@ -3,54 +3,67 @@ import "./App.css";
 
 function App() {
   const [file, setFile] = useState(null);
-  const [feedback, setFeedback] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [summary, setSummary] = useState(null);
 
-  const handleUpload = async () => {
-    if (!file) return;
+  const BASE_URL = process.env.REACT_APP_BASE_URL || "http://localhost:8000";
+
+  const handleUpload = (e) => {
+    setFile(e.target.files[0]);
+    setVideoUrl(null);
+    setSummary(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!file) return alert("Please upload a video.");
 
     const formData = new FormData();
     formData.append("file", file);
 
-    setLoading(true);
-    try {
-      const res = await fetch("http://localhost:8000/analyze-posture/", {
-        method: "POST",
-        body: formData,
-      });
+    const res = await fetch(`${BASE_URL}/analyze-posture/`,{
+      method: "POST",
+      body: formData,
+    });
 
-      const data = await res.json();
-      setFeedback(data.feedback);
-    } catch (err) {
-      console.error("Error uploading:", err);
-    }
-    setLoading(false);
+    const data = await res.json();
+    setVideoUrl(data.video_url);
+    setSummary(data.feedback);
   };
 
   return (
-    <div className="App">
-      <h1>Posture Detection</h1>
-      <input
-        type="file"
-        accept="video/*"
-        onChange={(e) => setFile(e.target.files[0])}
-      />
-      <button onClick={handleUpload}>Analyze</button>
+    <div className="container">
+      <h1 className="heading">Posture Detection</h1>
 
-      {loading && <p>Analyzing...</p>}
+      <div className="content">
+        <div className="left">
+          <p>
+            This model uses <strong>MediaPipe</strong> and <strong>OpenCV</strong> to analyze posture
+            frame-by-frame and classify the video as either <em>Sitting</em> or <em>Squatting</em>.
+          </p>
+        </div>
+        <div className="right">
+          <input type="file" accept="video/*" onChange={handleUpload} />
+          <button onClick={handleSubmit}>Submit</button>
+        </div>
+      </div>
 
-      {feedback && (
-        <div>
-          <h3>Result:</h3>
-          {typeof feedback === "string" ? (
-            <p>{feedback}</p>
-          ) : (
-            Object.entries(feedback).map(([key, value]) => (
-              <p key={key}>
-                <strong>{key}:</strong> {value}
-              </p>
-            ))
-          )}
+      {videoUrl && (
+        <div className="video-preview">
+          <video key={videoUrl} src={videoUrl} controls width="600" />
+        </div>
+      )}
+
+      {summary && (
+        <div className="summary">
+          <h2>Summary</h2>
+          <ul>
+            <li>
+              <strong>Posture Type:</strong> {summary.Classification}
+            </li>
+            <li>
+              <strong>Feedback:</strong> {summary.Comment}
+            </li>
+          </ul>
         </div>
       )}
     </div>

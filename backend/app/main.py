@@ -1,7 +1,11 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from starlette.responses import FileResponse
 import shutil
 import os
+import uuid
+
 from app.model import run_pose_model
 
 app = FastAPI()
@@ -14,21 +18,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-os.makedirs("temp_videos", exist_ok=True)
+if not os.path.exists("static"):
+    os.makedirs("static")
 
-@app.get("/")
-def read_root():
-    return {"message": "Backend is Live"}
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.post("/analyze-posture/")
 async def analyze_posture(file: UploadFile = File(...)):
-    file_path = f"temp_videos/{file.filename}"
-    
-    with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    input_filename = f"temp_{uuid.uuid4()}.mp4"
+    output_filename = f"processed_{uuid.uuid4()}.mp4"
+    output_path = os.path.join("static", output_filename)
 
-    result = run_pose_model(file_path)
+    with open(input_filename, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-    os.remove(file_path)
+    final_classification, feedback = run_pose_model(input_filename, output_path)
 
-    return {"feedback": result}
+    os.remove(input_filename)
+
+    return {
+        "video_url": f"http://localhost:8000/static/{output_filename}",
+        "feedback": {
+            "Classification": final_classification,
+            "Comment": feedback
+        }
+    }
