@@ -6,7 +6,7 @@ A full-stack application for detecting and analyzing posture from videos. This p
 
 ```
 Posture-Detection/
-├── backend/                # Python backend (Flask/FastAPI)
+├── backend/                # Python backend
 │   ├── app/                # Backend application code
 │   │   ├── __init__.py
 │   │   ├── main.py
