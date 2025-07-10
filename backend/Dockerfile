@@ -1,5 +1,5 @@
 # Use official Python 3.10 image (mediapipe needs Python ≤3.10)
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # Set environment variables to avoid prompts during installs
 ENV PYTHONDONTWRITEBYTECODE=1
