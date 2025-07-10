@@ -3,7 +3,7 @@ import mediapipe as mp
 import math
 from collections import defaultdict
 
-# Mediapipe initialization
+
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
@@ -65,7 +65,7 @@ def classify_posture(landmarks):
     a_k_a = (r_k_a + l_k_a) / 2
     
     if a_k_a > 170:
-        return "Other"  # Standing - will be ignored
+        return "Other"  
     elif a_k_a >= 150:
         return "Sitting"
     else:
@@ -80,7 +80,7 @@ def check_squatting_posture(landmarks):
     
     back_angle = calculate_torso_angle(landmarks)
     
-    # Check if knees are beyond toes or back is too bent
+    
     if (rk.x > ra.x or lk.x > la.x) or (back_angle is not None and back_angle < 140):
         return "Incorrect"
     return "Correct"
@@ -100,7 +100,7 @@ def check_sitting_posture(landmarks):
     
     back_angle = calculate_torso_angle(landmarks)
     
-    # Check for neck forward or back curve
+    
     if (neck_angle > 30) or (back_angle is not None and abs(back_angle - 180) > 30):
         return "Incorrect"
     return "Correct"
@@ -137,7 +137,7 @@ def run_pose_model(input_path, output_path):
                 correctness = check_squatting_posture(result.pose_landmarks.landmark)
             elif posture == "Sitting":
                 correctness = check_sitting_posture(result.pose_landmarks.landmark)
-            else:  # "Other"
+            else:  
                 correctness = "Other"
             
             if correctness == "Correct":
@@ -151,12 +151,11 @@ def run_pose_model(input_path, output_path):
     cap.release()
     out.release()
     
-    # Find dominant posture, ignoring "Other"
+    
     valid_postures = {k: v for k, v in counts.items() if k != "Other"}
     
     if not valid_postures:
-        return "Sitting", "Incorrect"  # Default fallback
-    
+        return "Sitting", "Incorrect"  
     dominant = max(valid_postures, key=valid_postures.get)
     total = counts[dominant]
     correct = correct_counts[dominant]
