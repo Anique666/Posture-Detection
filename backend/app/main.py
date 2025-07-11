@@ -24,9 +24,9 @@ if not os.path.exists("static"):
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.post("/analyze-posture/")
-async def analyze_posture(file: UploadFile = File(...)):
+async def analyze_posture(request: Request, file: UploadFile = File(...)):
     input_filename = f"temp_{uuid.uuid4()}.mp4"
-    output_filename = f"processed_{uuid.uuid4()}.mp4"
+    output_filename = f"processed_{uuid.uuid4()}.avi"
     output_path = os.path.join("static", output_filename)
     
     with open(input_filename, "wb") as buffer:

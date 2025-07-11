@@ -9,7 +9,7 @@ mp_drawing = mp.solutions.drawing_utils
 pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
 def calculate_angle(p1, p2, p3):
-    """Calculate angle between three points."""
+    
     v1 = (p1.x - p2.x, p1.y - p2.y)
     v2 = (p3.x - p2.x, p3.y - p2.y)
     
@@ -26,7 +26,7 @@ def calculate_angle(p1, p2, p3):
     return math.degrees(angle)
 
 def calculate_torso_angle(landmarks):
-    """Calculate torso angle from vertical."""
+    
     ls = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
     rs = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
     lh = landmarks[mp_pose.PoseLandmark.LEFT_HIP.value]
@@ -52,7 +52,7 @@ def calculate_torso_angle(landmarks):
     return 180 - angle
 
 def classify_posture(landmarks):
-    """Classify posture as Sitting, Squatting, or Other."""
+    
     rh = landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value]
     lh = landmarks[mp_pose.PoseLandmark.LEFT_HIP.value]
     rk = landmarks[mp_pose.PoseLandmark.RIGHT_KNEE.value]
@@ -72,7 +72,7 @@ def classify_posture(landmarks):
         return "Squatting"
 
 def check_squatting_posture(landmarks):
-    """Check if squatting posture is correct."""
+    
     rk = landmarks[mp_pose.PoseLandmark.RIGHT_KNEE.value]
     lk = landmarks[mp_pose.PoseLandmark.LEFT_KNEE.value]
     ra = landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE.value]
@@ -86,7 +86,7 @@ def check_squatting_posture(landmarks):
     return "Correct"
 
 def check_sitting_posture(landmarks):
-    """Check if sitting posture is correct."""
+    
     rs = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
     ls = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
     rh = landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value]
@@ -106,12 +106,12 @@ def check_sitting_posture(landmarks):
     return "Correct"
 
 def run_pose_model(input_path, output_path):
-    """Process video and return dominant posture (excluding Other) and feedback."""
+    
     cap = cv2.VideoCapture(input_path)
     width = int(cap.get(3))
     height = int(cap.get(4))
     fps = cap.get(cv2.CAP_PROP_FPS)
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
     
     counts = defaultdict(int)
