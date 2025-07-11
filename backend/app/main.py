@@ -6,6 +6,7 @@ import shutil
 import os
 import uuid
 from app.model import run_pose_model
+from fastapi import Request
 
 app = FastAPI()
 
@@ -34,8 +35,10 @@ async def analyze_posture(file: UploadFile = File(...)):
     final_classification, feedback = run_pose_model(input_filename, output_path)
     os.remove(input_filename)
     
+    base_url = str(request.base_url).rstrip("/")
+
     return {
-        "video_url": f"http://localhost:8000/static/{output_filename}",
+        "video_url": f"{base_url}/static/{output_filename}",
         "feedback": {
             "Classification": final_classification,
             "Comment": feedback
